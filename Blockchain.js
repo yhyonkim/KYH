@@ -1,3 +1,4 @@
+// git
 const CryptoJS = require("crypto-js"),   // cryptoJS 사용하기 위해 import
     hexToBinary = require("hex-to-binary");
 
@@ -74,6 +75,15 @@ const isBlockValid = (candidateBlock, latestBlock) => {
     return true;
 };
 
+const getBlocksHash = block =>
+  createHash(
+    block.index,
+    block.previousHash,
+    block.timestamp,
+    block.data,
+    block.difficulty,
+    block.nonce);
+
 const isTimeStampValid = (newBlock, oldBlock) => {
         return (oldBlock.timestamp - 60 < newBlock.timestamp &&
           newBlock.timestamp - 60 < getTimestamp());
@@ -102,11 +112,6 @@ const calculateNewDifficulty = ( newestBlock, blockchain) => {
     return 0;
 };
 
-const findeDifficulty = () => {
-    //TODO : Difficulty 리턴 (새로운 Difficulty 로 계산 할지, 기존 것 쓸 지)
-    return genesisBlock.difficulty;
-};
-
 // PoW 구현 - 난이도가 맞는지 확인
 const hashMatchesDifficulty = (hash, difficulty = 0) => {
         //TODO : 해시가 Difficulty 가 맞는지 확인하기
@@ -133,7 +138,7 @@ const findBlock = ( index, previousHash, timestamp, data, difficulty ) => {
         hash = createHash(index, previousHash, timestamp, data, difficulty, nonce);
 
         if (hashMatchesDifficulty(hash, difficulty)) { 
-            return new Block( index, previousHash, timestamp, data, difficulty, nonce);
+            return new Block( index, hash, previousHash, timestamp, data, difficulty, nonce);
         }
         nonce++;
     }
@@ -164,4 +169,41 @@ const createNewRawBlock = data => {
     return newBlock;
 };
 
-createNewRawBlock({});
+const isChainValid = candidateChain => {
+    const isGenesisValid = block => {
+          return JSON.stringify(block) === JSON.stringify(genesisBlock);
+    };
+    if (!isGenesisValid(candidateChain[0])) {
+          console.log("The candidateChains's genesisBlock is not the same as our genesisBlock");
+          return null;
+    }
+};
+
+const BLOCK_GENERATION_INTERVAL = 1;  //비트코인은 600초(10분)이지만, 실습을 위해 1초마다 생성 
+const DIFFICULTY_ADJUSTMENT = 10;   //비트코인은 2016개 블록이지만, 실습을 위해 10개마다 난이도 조정
+
+const findeDifficulty = () => {
+    const newestBlock = getNewestBlock();
+    //TODO : Difficulty 리턴 (새로운 Difficulty 로 계산 할지, 기존 것 쓸 지)
+    //Difficulty 가 인터벌로 나누어 지고 제네시스 블록이 아닌 경우
+    if ( newestBlock.index % BLOCK_GENERATION_INTERVAL === 0 && newestBlock.index !== 0 ) {
+        return calculateNewDifficulty(newestBlock, getBlockchain());
+    } else {
+        return newestBlock.difficulty;
+    }
+};
+
+/*
+const calculateNewDifficulty = (newestBlock, blockchain) => {
+    const lastCalculateBlock = blockchain[blockchain.length - DIFFICULTY_ADJUSTMENT]
+}
+*/
+
+const createNewBlock = () => {
+    console.log("Mining !", getNewestBlock().index +1);
+    return createNewRawBlock();
+};
+
+while (true) {    
+    createNewBlock({});
+}
