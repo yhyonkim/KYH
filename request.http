@@ -1,0 +1,13 @@
+###
+GET http://localhost:3000/blocks
+
+###
+POST http://localhost:3000/blocks
+Content-Type: application/json
+
+#####################################4000 과 3000 p2p 연결
+POST http://localhost:3000/peers
+Content-Type: application/json
+{
+    "peer": "ws://localhost:4000"
+}
