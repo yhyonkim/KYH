@@ -4,7 +4,7 @@ const {
     isBlockStructureValid,
     replaceChain,
     getBlockchain,
-    addBlockToChain,
+    addBlockToChain
     //handleIncomingTx // TODO: With Tx
   } = Blockchain;
 
