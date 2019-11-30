@@ -3,6 +3,7 @@ const CryptoJS = require("crypto-js"),
   _ = require("lodash"),
   utils = require("./utils");
 const ec = new elliptic.ec("secp256k1");
+
 //CoinBase 로 부터 오는 보상 금액 (50BTC)
 //실제로는 매 210000 블록마다 반으로 줄어듬
 const COINBASE_AMOUNT = 50;
@@ -13,14 +14,15 @@ class TxOut {
         this.address = address;
         this.amount = amount;
       }
-    }
+}
+
 class TxIn {
     txOutId string;
     txOutIndex number;
     Signature string;
 }
 
-    class Transaction {
+class Transaction {
       ID string;
       txIns[] TxIn;
       txOuts[] TxOut;
@@ -44,7 +46,7 @@ const getTxId = tx => {
         .map(txOut => txOut.address + txOut.amount)
         .reduce((a, b) => a + b, "");
       //위에서 더한 것과 timestamp 를 더해서 해시
-      return CryptoJS.SHA256(txInContent + txOutContent + *).toString();
+      return CryptoJS.SHA256(txInContent + txOutContent + tx.timestamp).toString();
 };
 
 //사용되지 않은 트랜잭션 리스트에서 txOutId가 같고 txOutIndex 가 같은 것을 찾음.
@@ -211,12 +213,12 @@ const getAmountInTxIn = (txIn, uTxOutList) =>
 
 const validateTx = (tx, uTxOutList) => {
       //tx 구조 검증
-      if (!*(tx)) {
+      if (!isTxStructureValid(tx)) {
         console.log("Tx 구조가 이상함.");
         return false;
       }
       //실제 해시 계산
-      if (*(tx) !== tx.id) {
+      if (getTxId(tx) !== tx.id) {
         console.log("tx 해시한거랑 id 랑 다름.");
         return false;
       }
@@ -236,7 +238,7 @@ const validateTx = (tx, uTxOutList) => {
   const amountInTxOuts = tx.txOuts
     .map(txOut => txOut.amount)
     .reduce((a, b) => a + b, 0);
-  if (* !== *) {
+  if (amountInTxIns !== amountInTxOuts) {
     console.log(
       `tx: ${tx} txIns 의 amount가 txOuts 의 amount와 다름`
     );
@@ -254,20 +256,20 @@ const createCoinbaseTx = (address, blockIndex) => {
       txIn.txOutId = "";
       txIn.txOutIndex = blockIndex;
       tx.txIns = [txIn];
-      tx.txOuts = [new TxOut(address, *)];
+      tx.txOuts = [new TxOut(address, COINBASE_AMOUNT)];
       tx.id = getTxId(tx);
       return tx;
 };
     
 //Coinbase Transaction 검증
 const validateCoinbaseTx = (tx, blockIndex) => {
-      if (*(tx) !== tx.id) {
+      if (getTxId(tx) !== tx.id) {
         console.log("잘못 계산된 Tx id");
         return false;
       } else if (tx.txIns.length !== 1) {
         console.log("Coinbase TX 는 반드시 하나의 Input 만 있어야 함");
         return false;
-      } else if (* !== blockIndex) {
+      } else if (tx.TxInx[0].txOutIndex !== blockIndex) {
         console.log("첫번째 txIn의 txOutIndex는 Block Index 와 같아야 함.");
         return false;
       } else if (tx.txOuts.length !== 1) {
@@ -275,7 +277,7 @@ const validateCoinbaseTx = (tx, blockIndex) => {
         return false;
       } else if (tx.txOuts[0].amount !== *) {
         console.log(
-          `Coinbase TX 은 오직 정해진 양이어야 함. ${*} != ${tx.txOuts[0].amount}`
+          `Coinbase TX 은 오직 정해진 양이어야 함. ${COINBASE_AMOUNT} != ${tx.txOuts[0].amount}`
         );
         return false;
       } else {
@@ -308,10 +310,11 @@ const validateBlockTxs = (txs, uTxOutList, blockIndex) => {
         .map(tx => tx.txIns) 
         .flatten() //tx.txIns 를 가져와서 1차원 배열로 만들어주고
         .value();  //값을 가져옴  //이중지불 체크
-      if (*(txIns)) {
+      if (hasDuplicates(txIns)) {
         return false;
       }
-      const nonCoinbaseTxs = txs.slice(1); //txs 복사  return nonCoinbaseTxs
+      const nonCoinbaseTxs = txs.slice(1); //txs 복사  js에서는 refernce되기 때문!
+      return nonCoinbaseTxs
         .map(tx => validateTx(tx, uTxOutList))  // 리턴되는게 true / false
         .reduce((a, b) => a && b, true);         // false 만 
 };
