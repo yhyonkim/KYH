@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PDB Reader</string>
+    <string name="reader">리더</string>
+    <string name="settings">설정</string>
+    <string name="library">서재</string>
+    <string name="open_file">파일 열기</string>
+    <string name="no_books">서재가 비어있습니다.\n\'+\' 버튼으로 PDB 파일을 추가하세요.</string>
+    <string name="error_reading_file">파일을 읽을 수 없습니다.</string>
+    <string name="error_invalid_pdb">유효하지 않은 PDB 파일입니다.</string>
+    <string name="delete_book">삭제</string>
+    <string name="delete_book_confirm">이 책을 서재에서 삭제하시겠습니까?</string>
+    <string name="cancel">취소</string>
+    <string name="delete">삭제</string>
+    <string name="font_size">글자 크기</string>
+    <string name="font_size_small">작게</string>
+    <string name="font_size_medium">보통</string>
+    <string name="font_size_large">크게</string>
+    <string name="font_size_xlarge">아주 크게</string>
+    <string name="background_color">배경색</string>
+    <string name="bg_white">흰색</string>
+    <string name="bg_sepia">세피아</string>
+    <string name="bg_dark">다크</string>
+    <string name="line_spacing">줄 간격</string>
+    <string name="reading_progress">읽은 위치</string>
+    <string name="toc">목차</string>
+    <string name="search">검색</string>
+    <string name="search_hint">검색어를 입력하세요</string>
+    <string name="no_results">검색 결과가 없습니다.</string>
+    <string name="go_to_page">페이지 이동</string>
+    <string name="page_of">%1$d / %2$d 페이지</string>
+    <string name="book_info">책 정보</string>
+    <string name="title">제목</string>
+    <string name="format">형식</string>
+    <string name="size">크기</string>
+    <string name="records">레코드 수</string>
+    <string name="ok">확인</string>
+    <string name="scroll_mode">스크롤 모드</string>
+    <string name="page_mode">페이지 모드</string>
+    <string name="permission_required">파일 읽기 권한이 필요합니다.</string>
+    <string name="grant_permission">권한 허용</string>
+</resources>

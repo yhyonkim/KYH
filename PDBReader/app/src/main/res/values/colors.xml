@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#0D47A1</color>
+    <color name="primary_light">#42A5F5</color>
+    <color name="accent">#FF6F00</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- Background themes -->
+    <color name="bg_white">#FFFFFF</color>
+    <color name="bg_sepia">#F5ECD7</color>
+    <color name="bg_dark">#1A1A2E</color>
+
+    <!-- Text colors for themes -->
+    <color name="text_white">#1A1A1A</color>
+    <color name="text_sepia">#3B2B1A</color>
+    <color name="text_dark">#E0E0E0</color>
+
+    <!-- UI colors -->
+    <color name="card_background">#F8F9FA</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="shadow">#40000000</color>
+    <color name="toolbar_dark">#16213E</color>
+</resources>

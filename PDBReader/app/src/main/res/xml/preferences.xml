@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="읽기 설정">
+
+        <ListPreference
+            android:key="font_size"
+            android:title="@string/font_size"
+            android:entries="@array/font_size_entries"
+            android:entryValues="@array/font_size_values"
+            android:defaultValue="16"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            android:key="bg_theme"
+            android:title="@string/background_color"
+            android:entries="@array/bg_theme_entries"
+            android:entryValues="@array/bg_theme_values"
+            android:defaultValue="0"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            android:key="line_spacing"
+            android:title="@string/line_spacing"
+            android:entries="@array/line_spacing_entries"
+            android:entryValues="@array/line_spacing_values"
+            android:defaultValue="1.6"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="앱 정보">
+
+        <Preference
+            android:key="version"
+            android:title="버전"
+            android:summary="1.0.0" />
+
+        <Preference
+            android:key="supported_formats"
+            android:title="지원 포맷"
+            android:summary="Palm DOC (.pdb), iSilo (.pdb), zTXT (.pdb)" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

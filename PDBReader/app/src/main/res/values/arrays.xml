@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="font_size_entries">
+        <item>작게 (12sp)</item>
+        <item>보통 (16sp)</item>
+        <item>크게 (20sp)</item>
+        <item>아주 크게 (24sp)</item>
+    </string-array>
+    <string-array name="font_size_values">
+        <item>12</item>
+        <item>16</item>
+        <item>20</item>
+        <item>24</item>
+    </string-array>
+
+    <string-array name="bg_theme_entries">
+        <item>흰색</item>
+        <item>세피아</item>
+        <item>다크</item>
+    </string-array>
+    <string-array name="bg_theme_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="line_spacing_entries">
+        <item>좁게 (1.2)</item>
+        <item>보통 (1.6)</item>
+        <item>넓게 (2.0)</item>
+        <item>매우 넓게 (2.4)</item>
+    </string-array>
+    <string-array name="line_spacing_values">
+        <item>1.2</item>
+        <item>1.6</item>
+        <item>2.0</item>
+        <item>2.4</item>
+    </string-array>
+</resources>
