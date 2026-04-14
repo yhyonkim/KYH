@@ -3,9 +3,7 @@ package com.example.pdbreader
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
-import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.SeekBarPreference
 import com.example.pdbreader.databinding.ActivitySettingsBinding
 
 class SettingsActivity : AppCompatActivity() {

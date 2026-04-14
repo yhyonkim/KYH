@@ -4,7 +4,9 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.text.Html
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
@@ -13,16 +15,20 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.pdbreader.databinding.ActivityReaderBinding
+import com.example.pdbreader.model.Bookmark
 import com.example.pdbreader.parser.PalmDocReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 
 class ReaderActivity : AppCompatActivity() {
@@ -34,6 +40,7 @@ class ReaderActivity : AppCompatActivity() {
     private var filePath: String = ""
     private var bookTitle: String = ""
     private var fullText: String = ""
+    private var isHtml: Boolean = false
 
     // 읽기 설정
     private var fontSize = 16f
@@ -44,6 +51,9 @@ class ReaderActivity : AppCompatActivity() {
     private var searchQuery = ""
     private var searchResults = listOf<Int>()
     private var currentSearchIndex = -1
+
+    // 북마크
+    private val bookmarks = mutableListOf<Bookmark>()
 
     companion object {
         const val EXTRA_BOOK_ID = "extra_book_id"
@@ -77,6 +87,7 @@ class ReaderActivity : AppCompatActivity() {
         }
 
         loadSettings()
+        loadBookmarks()
         applyTheme()
         setupSearchBar()
         setupProgressBar()
@@ -88,7 +99,6 @@ class ReaderActivity : AppCompatActivity() {
             finish()
         }
 
-        // 탭하여 UI 토글
         binding.scrollView.setOnClickListener { toggleUI() }
     }
 
@@ -103,10 +113,10 @@ class ReaderActivity : AppCompatActivity() {
                 }
 
                 fullText = result.text
+                isHtml = result.isHtml
                 displayText(fullText)
                 updateProgressBar()
 
-                // 이전 읽기 위치 복원
                 val savedPos = prefs.getInt("pos_$bookId", 0)
                 if (savedPos > 0) {
                     binding.scrollView.post {
@@ -131,7 +141,17 @@ class ReaderActivity : AppCompatActivity() {
         binding.tvContent.apply {
             textSize = fontSize
             setLineSpacing(0f, lineSpacing)
-            this.text = text
+            this.text = if (isHtml) {
+                // HTML 렌더링
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    Html.fromHtml(text, Html.FROM_HTML_MODE_COMPACT)
+                } else {
+                    @Suppress("DEPRECATION")
+                    Html.fromHtml(text)
+                }
+            } else {
+                text
+            }
         }
     }
 
@@ -155,7 +175,6 @@ class ReaderActivity : AppCompatActivity() {
         binding.tvContent.setBackgroundColor(bgColor)
         binding.tvContent.setTextColor(textColor)
 
-        // 다크 테마에서 툴바 색상 변경
         if (bgTheme == BG_DARK) {
             binding.toolbar.setBackgroundColor(resources.getColor(R.color.toolbar_dark, theme))
             binding.bottomBar.setBackgroundColor(resources.getColor(R.color.toolbar_dark, theme))
@@ -170,7 +189,6 @@ class ReaderActivity : AppCompatActivity() {
                 true
             } else false
         }
-
         binding.btnSearchNext.setOnClickListener { navigateSearch(forward = true) }
         binding.btnSearchPrev.setOnClickListener { navigateSearch(forward = false) }
         binding.btnSearchClose.setOnClickListener { hideSearchBar() }
@@ -200,26 +218,23 @@ class ReaderActivity : AppCompatActivity() {
 
     private fun highlightSearchResults() {
         if (searchQuery.isEmpty() || fullText.isEmpty()) {
-            binding.tvContent.text = fullText
+            displayText(fullText)
             return
         }
 
         val spannable = SpannableString(fullText)
-        val highlightColor = Color.YELLOW
-
         var index = 0
         while (true) {
             index = fullText.indexOf(searchQuery, index, ignoreCase = true)
             if (index == -1) break
             spannable.setSpan(
-                BackgroundColorSpan(highlightColor),
+                BackgroundColorSpan(Color.YELLOW),
                 index, index + searchQuery.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             index += searchQuery.length
         }
 
-        // 현재 선택된 결과를 더 밝게 강조
         if (currentSearchIndex in searchResults.indices) {
             val pos = searchResults[currentSearchIndex]
             spannable.setSpan(
@@ -228,14 +243,12 @@ class ReaderActivity : AppCompatActivity() {
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
-
         binding.tvContent.text = spannable
     }
 
     private fun scrollToSearchResult(index: Int) {
         if (index !in searchResults.indices) return
         val pos = searchResults[index]
-        val lineHeight = binding.tvContent.lineHeight
         val layout = binding.tvContent.layout ?: return
         val line = layout.getLineForOffset(pos)
         val y = layout.getLineTop(line)
@@ -258,8 +271,110 @@ class ReaderActivity : AppCompatActivity() {
         searchQuery = ""
         searchResults = emptyList()
         currentSearchIndex = -1
-        binding.tvContent.text = fullText
+        displayText(fullText)
     }
+
+    // ──────────────────────────── 북마크 ────────────────────────────
+
+    private fun addBookmark() {
+        if (fullText.isEmpty()) return
+        val scrollY = binding.scrollView.scrollY
+        val contentHeight = binding.scrollView.getChildAt(0)?.height ?: 1
+        val charIndex = ((scrollY.toFloat() / contentHeight) * fullText.length).toInt()
+            .coerceIn(0, fullText.length)
+        val preview = fullText.substring(charIndex, minOf(charIndex + 60, fullText.length))
+            .replace('\n', ' ')
+            .trim()
+
+        val bookmark = Bookmark(
+            bookId = bookId,
+            scrollPosition = scrollY,
+            textPreview = preview
+        )
+        bookmarks.add(bookmark)
+        saveBookmarks()
+        Toast.makeText(this, R.string.bookmark_added, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showBookmarks() {
+        if (bookmarks.isEmpty()) {
+            Toast.makeText(this, R.string.no_bookmarks, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val items = bookmarks.mapIndexed { i, bm ->
+            val time = android.text.format.DateFormat.format("MM/dd HH:mm", bm.createdAt)
+            "${i + 1}. [$time]\n${bm.textPreview}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.bookmarks)
+            .setItems(items) { _, which ->
+                val bm = bookmarks[which]
+                binding.scrollView.smoothScrollTo(0, bm.scrollPosition)
+            }
+            .setNeutralButton("삭제") { _, _ ->
+                showDeleteBookmarkDialog()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showDeleteBookmarkDialog() {
+        val items = bookmarks.mapIndexed { i, bm ->
+            val time = android.text.format.DateFormat.format("MM/dd HH:mm", bm.createdAt)
+            "${i + 1}. [$time] ${bm.textPreview}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("북마크 삭제")
+            .setItems(items) { _, which ->
+                bookmarks.removeAt(which)
+                saveBookmarks()
+                Toast.makeText(this, R.string.bookmark_deleted, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun saveBookmarks() {
+        val arr = JSONArray()
+        bookmarks.forEach { bm ->
+            arr.put(JSONObject().apply {
+                put("id", bm.id)
+                put("bookId", bm.bookId)
+                put("scrollPosition", bm.scrollPosition)
+                put("textPreview", bm.textPreview)
+                put("createdAt", bm.createdAt)
+            })
+        }
+        prefs.edit().putString("bookmarks_$bookId", arr.toString()).apply()
+    }
+
+    private fun loadBookmarks() {
+        if (bookId == -1L) return
+        val saved = prefs.getString("bookmarks_$bookId", null) ?: return
+        try {
+            val arr = JSONArray(saved)
+            bookmarks.clear()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                bookmarks.add(
+                    Bookmark(
+                        id = obj.getLong("id"),
+                        bookId = obj.getLong("bookId"),
+                        scrollPosition = obj.getInt("scrollPosition"),
+                        textPreview = obj.getString("textPreview"),
+                        createdAt = obj.getLong("createdAt")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            bookmarks.clear()
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────
 
     private fun setupProgressBar() {
         binding.seekBarProgress.setOnSeekBarChangeListener(object :
@@ -289,7 +404,7 @@ class ReaderActivity : AppCompatActivity() {
             val progress = (scrollY * 100f / maxScroll).toInt()
             binding.seekBarProgress.progress = progress.coerceIn(0, 100)
             binding.tvCurrentPage.text = "$progress%"
-            binding.tvTotalPages.text = "총 ${fullText.length / 100}단어"
+            binding.tvTotalPages.text = "총 ${"%,d".format(fullText.length)}자"
         }
     }
 
@@ -300,7 +415,6 @@ class ReaderActivity : AppCompatActivity() {
         val progress = if (contentHeight > 0) scrollY.toFloat() / contentHeight else 0f
         prefs.edit().putInt("pos_$bookId", scrollY).apply()
 
-        // LibraryViewModel의 진행률 업데이트 (브로드캐스트 방식)
         getSharedPreferences("progress_updates", Context.MODE_PRIVATE)
             .edit()
             .putFloat("progress_$bookId", progress)
@@ -335,15 +449,14 @@ class ReaderActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            android.R.id.home -> {
-                onBackPressedDispatcher.onBackPressed()
-                true
-            }
+            android.R.id.home -> { onBackPressedDispatcher.onBackPressed(); true }
             R.id.action_search -> {
                 binding.searchBar.visibility = View.VISIBLE
                 binding.etSearch.requestFocus()
                 true
             }
+            R.id.action_add_bookmark -> { addBookmark(); true }
+            R.id.action_show_bookmarks -> { showBookmarks(); true }
             R.id.action_font_size -> showFontSizeDialog()
             R.id.action_background -> showBackgroundDialog()
             R.id.action_book_info -> showBookInfoDialog()
@@ -353,12 +466,7 @@ class ReaderActivity : AppCompatActivity() {
     }
 
     private fun showFontSizeDialog(): Boolean {
-        val options = arrayOf(
-            getString(R.string.font_size_small) + " (12sp)",
-            getString(R.string.font_size_medium) + " (16sp)",
-            getString(R.string.font_size_large) + " (20sp)",
-            getString(R.string.font_size_xlarge) + " (24sp)"
-        )
+        val options = arrayOf("작게 (12sp)", "보통 (16sp)", "크게 (20sp)", "아주 크게 (24sp)")
         val sizes = floatArrayOf(12f, 16f, 20f, 24f)
         val current = sizes.indexOfFirst { it == fontSize }.coerceAtLeast(1)
 
@@ -381,7 +489,6 @@ class ReaderActivity : AppCompatActivity() {
             getString(R.string.bg_sepia),
             getString(R.string.bg_dark)
         )
-
         AlertDialog.Builder(this)
             .setTitle(R.string.background_color)
             .setSingleChoiceItems(options, bgTheme) { dialog, which ->
@@ -396,18 +503,18 @@ class ReaderActivity : AppCompatActivity() {
     }
 
     private fun showBookInfoDialog(): Boolean {
-        if (fullText.isEmpty()) return true
         val file = File(filePath)
         val sizeStr = when {
             file.length() >= 1024 * 1024 -> "%.1f MB".format(file.length() / (1024.0 * 1024.0))
             file.length() >= 1024 -> "%.1f KB".format(file.length() / 1024.0)
             else -> "${file.length()} B"
         }
-
         val message = """
-            |${getString(R.string.title)}: $bookTitle
-            |${getString(R.string.size)}: $sizeStr
+            |제목: $bookTitle
+            |크기: $sizeStr
             |글자 수: ${"%,d".format(fullText.length)}자
+            |형식: ${if (isHtml) "HTML" else "텍스트"}
+            |북마크: ${bookmarks.size}개
             |파일: ${file.name}
         """.trimMargin()
 
@@ -424,15 +531,15 @@ class ReaderActivity : AppCompatActivity() {
             hint = "0-100 (%)"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
-
         AlertDialog.Builder(this)
             .setTitle(R.string.go_to_page)
             .setView(input)
             .setPositiveButton(R.string.ok) { _, _ ->
-                val percent = input.text.toString().toIntOrNull()?.coerceIn(0, 100) ?: return@setPositiveButton
-                val contentHeight = binding.scrollView.getChildAt(0)?.height ?: return@setPositiveButton
-                val targetY = (contentHeight * percent / 100f).toInt()
-                binding.scrollView.smoothScrollTo(0, targetY)
+                val percent = input.text.toString().toIntOrNull()?.coerceIn(0, 100)
+                    ?: return@setPositiveButton
+                val contentHeight = binding.scrollView.getChildAt(0)?.height
+                    ?: return@setPositiveButton
+                binding.scrollView.smoothScrollTo(0, (contentHeight * percent / 100f).toInt())
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

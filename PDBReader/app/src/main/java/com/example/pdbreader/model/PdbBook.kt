@@ -1,7 +1,5 @@
 package com.example.pdbreader.model
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
 
 /**
  * Palm PDB 파일 포맷 타입

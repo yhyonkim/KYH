@@ -23,7 +23,8 @@ class PalmDocReader(private val file: File) {
         val text: String,
         val format: PdbFormat,
         val recordCount: Int,
-        val textLength: Int
+        val textLength: Int,
+        val isHtml: Boolean = false
     )
 
     /**
@@ -87,12 +88,14 @@ class PalmDocReader(private val file: File) {
             sb.append(String(decoded, Charsets.UTF_8))
         }
 
+        val finalText = cleanText(sb.toString())
         return ReadResult(
             title = header.name.ifEmpty { file.nameWithoutExtension },
-            text = cleanText(sb.toString()),
+            text = finalText,
             format = PdbFormat.PALM_DOC,
             recordCount = textRecords,
-            textLength = textLength
+            textLength = textLength,
+            isHtml = isHtmlContent(finalText)
         )
     }
 
@@ -225,6 +228,19 @@ class PalmDocReader(private val file: File) {
             val text = String(data, Charsets.ISO_8859_1)
             text.filter { it.code in 32..126 || it == '\n' || it == '\r' || it == '\t' }
         }
+    }
+
+    /**
+     * 텍스트가 HTML 컨텐츠인지 감지합니다.
+     */
+    private fun isHtmlContent(text: String): Boolean {
+        val sample = text.take(2000).lowercase()
+        return sample.contains("<html") ||
+            sample.contains("<body") ||
+            (sample.contains("<p>") || sample.contains("<p ")) ||
+            sample.contains("<br") ||
+            sample.contains("<div") ||
+            sample.contains("<h1") || sample.contains("<h2") || sample.contains("<h3")
     }
 
     /**
