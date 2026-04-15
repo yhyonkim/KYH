@@ -7,6 +7,11 @@
         android:icon="@android:drawable/ic_menu_search"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_tts"
+        android:title="@string/tts_read"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/action_book_info"
         android:title="@string/book_info"
         app:showAsAction="never" />

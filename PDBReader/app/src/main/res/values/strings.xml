@@ -45,4 +45,9 @@
     <string name="bookmark_deleted">북마크가 삭제되었습니다.</string>
     <string name="no_bookmarks">저장된 북마크가 없습니다.</string>
     <string name="bookmarks">북마크</string>
+    <string name="tts_read">음성 읽기</string>
+    <string name="tts_stop">음성 중지</string>
+    <string name="tts_not_supported">이 기기에서는 TTS를 사용할 수 없습니다.</string>
+    <string name="tts_reading">음성으로 읽는 중...</string>
+    <string name="dark_mode_auto">시스템 다크 모드 자동 적용</string>
 </resources>

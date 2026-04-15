@@ -38,7 +38,8 @@
             android:name=".ReaderActivity"
             android:exported="false"
             android:label="@string/reader"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode|orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

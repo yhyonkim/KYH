@@ -14,11 +14,13 @@
     </string-array>
 
     <string-array name="bg_theme_entries">
+        <item>시스템 자동</item>
         <item>흰색</item>
         <item>세피아</item>
         <item>다크</item>
     </string-array>
     <string-array name="bg_theme_values">
+        <item>-1</item>
         <item>0</item>
         <item>1</item>
         <item>2</item>
