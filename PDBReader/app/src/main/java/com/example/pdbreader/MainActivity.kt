@@ -23,6 +23,7 @@ import com.example.pdbreader.adapter.BookAdapter
 import com.example.pdbreader.databinding.ActivityMainBinding
 import com.example.pdbreader.model.PdbBook
 import com.example.pdbreader.ui.LibraryViewModel
+import com.example.pdbreader.ui.SortOrder
 import java.io.File
 import java.io.FileOutputStream
 
@@ -214,11 +215,41 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_sort -> {
+                showSortDialog()
+                true
+            }
             R.id.action_settings -> {
                 startActivity(Intent(this, SettingsActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun showSortDialog() {
+        val options = arrayOf(
+            getString(R.string.sort_by_title),
+            getString(R.string.sort_by_date),
+            getString(R.string.sort_by_progress)
+        )
+        val current = when (viewModel.currentSortOrder()) {
+            SortOrder.BY_TITLE      -> 0
+            SortOrder.BY_DATE_ADDED -> 1
+            SortOrder.BY_PROGRESS   -> 2
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.sort_by)
+            .setSingleChoiceItems(options, current) { dialog, which ->
+                val order = when (which) {
+                    0 -> SortOrder.BY_TITLE
+                    1 -> SortOrder.BY_DATE_ADDED
+                    else -> SortOrder.BY_PROGRESS
+                }
+                viewModel.setSortOrder(order)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 }

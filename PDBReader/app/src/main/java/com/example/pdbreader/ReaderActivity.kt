@@ -2,6 +2,7 @@ package com.example.pdbreader
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Color
@@ -13,9 +14,11 @@ import android.text.Html
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
+import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -64,6 +67,27 @@ class ReaderActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var isSpeaking = false
     private var ttsMenuItem: MenuItem? = null
 
+    // 스와이프 제스처
+    private val gestureDetector by lazy {
+        GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?, e2: MotionEvent,
+                velocityX: Float, velocityY: Float
+            ): Boolean {
+                val dx = e2.x - (e1?.x ?: 0f)
+                val dy = e2.y - (e1?.y ?: 0f)
+                // 수평 스와이프가 수직보다 클 때만 페이지 이동
+                if (Math.abs(dx) > Math.abs(dy) * 1.5f &&
+                    Math.abs(dx) > SWIPE_THRESHOLD &&
+                    Math.abs(velocityX) > SWIPE_VELOCITY) {
+                    if (dx < 0) pageDown() else pageUp()
+                    return true
+                }
+                return false
+            }
+        })
+    }
+
     companion object {
         const val EXTRA_BOOK_ID = "extra_book_id"
         const val EXTRA_FILE_PATH = "extra_file_path"
@@ -78,7 +102,10 @@ class ReaderActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val PREF_BG_THEME     = "bg_theme"
         private const val PREF_LINE_SPACING = "line_spacing"
 
-        private const val TTS_CHUNK = 3000   // TTS는 한 번에 최대 4000자
+        private const val TTS_CHUNK          = 3000   // TTS는 한 번에 최대 4000자
+        private const val SWIPE_THRESHOLD    = 100f   // px
+        private const val SWIPE_VELOCITY     = 100f   // px/s
+        private const val SHARE_MAX_LENGTH   = 5000   // 공유 최대 글자 수
     }
 
     // ────────────────────────── 생명주기 ──────────────────────────
@@ -469,6 +496,45 @@ class ReaderActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.bottomBar.visibility    = if (visible) View.GONE else View.VISIBLE
     }
 
+    // ─────────────────────── 스와이프 제스처 ─────────────────────
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun pageDown() {
+        val pageHeight = binding.scrollView.height
+        binding.scrollView.smoothScrollBy(0, pageHeight)
+    }
+
+    private fun pageUp() {
+        val pageHeight = binding.scrollView.height
+        binding.scrollView.smoothScrollBy(0, -pageHeight)
+    }
+
+    // ─────────────────────── 텍스트 공유 ─────────────────────────
+
+    private fun shareText() {
+        if (fullText.isEmpty()) {
+            Toast.makeText(this, R.string.error_reading_file, Toast.LENGTH_SHORT).show()
+            return
+        }
+        // 현재 위치 기준으로 일부 텍스트 공유 (최대 SHARE_MAX_LENGTH자)
+        val scrollY = binding.scrollView.scrollY
+        val contentH = binding.scrollView.getChildAt(0)?.height ?: 1
+        val startChar = ((scrollY.toFloat() / contentH) * fullText.length)
+            .toInt().coerceIn(0, fullText.length)
+        val shareText = fullText.substring(startChar, minOf(startChar + SHARE_MAX_LENGTH, fullText.length))
+
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, bookTitle)
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        startActivity(Intent.createChooser(sendIntent, getString(R.string.share_text)))
+    }
+
     // ─────────────────────── 설정 저장/로드 ──────────────────────
 
     private fun loadSettings() {
@@ -499,6 +565,7 @@ class ReaderActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         R.id.action_tts            -> { toggleTts(); true }
         R.id.action_add_bookmark   -> { addBookmark(); true }
         R.id.action_show_bookmarks -> { showBookmarks(); true }
+        R.id.action_share          -> { shareText(); true }
         R.id.action_font_size      -> showFontSizeDialog()
         R.id.action_background     -> showBackgroundDialog()
         R.id.action_book_info      -> showBookInfoDialog()

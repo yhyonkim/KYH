@@ -50,4 +50,10 @@
     <string name="tts_not_supported">이 기기에서는 TTS를 사용할 수 없습니다.</string>
     <string name="tts_reading">음성으로 읽는 중...</string>
     <string name="dark_mode_auto">시스템 다크 모드 자동 적용</string>
+    <string name="share_text">텍스트 공유</string>
+    <string name="sort_by">정렬</string>
+    <string name="sort_by_title">제목순</string>
+    <string name="sort_by_date">추가일순</string>
+    <string name="sort_by_progress">진행률순</string>
+    <string name="swipe_hint">좌우 스와이프로 페이지 이동</string>
 </resources>

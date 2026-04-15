@@ -35,4 +35,9 @@
         android:id="@+id/action_show_bookmarks"
         android:title="@string/show_bookmarks"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_share"
+        android:title="@string/share_text"
+        android:icon="@android:drawable/ic_menu_share"
+        app:showAsAction="never" />
 </menu>

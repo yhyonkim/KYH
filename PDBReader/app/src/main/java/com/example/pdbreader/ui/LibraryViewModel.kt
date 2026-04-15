@@ -16,6 +16,11 @@ import org.json.JSONObject
 import java.io.File
 
 /**
+ * 책 목록 정렬 기준
+ */
+enum class SortOrder { BY_TITLE, BY_DATE_ADDED, BY_PROGRESS }
+
+/**
  * 서재(Library) ViewModel
  * 책 목록을 관리하고 SharedPreferences에 저장합니다.
  */
@@ -34,8 +39,26 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
+    private var sortOrder = SortOrder.BY_DATE_ADDED
+
     init {
         loadBooks()
+    }
+
+    /**
+     * 정렬 기준을 변경합니다.
+     */
+    fun setSortOrder(order: SortOrder) {
+        sortOrder = order
+        _books.value = sortBooks(_books.value ?: emptyList())
+    }
+
+    fun currentSortOrder(): SortOrder = sortOrder
+
+    private fun sortBooks(list: List<PdbBook>): List<PdbBook> = when (sortOrder) {
+        SortOrder.BY_TITLE      -> list.sortedBy { it.title.lowercase() }
+        SortOrder.BY_DATE_ADDED -> list.sortedByDescending { it.addedDate }
+        SortOrder.BY_PROGRESS   -> list.sortedByDescending { it.readingProgress }
     }
 
     private fun loadBooks() {
@@ -51,7 +74,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                     list.add(book)
                 }
             }
-            _books.value = list
+            _books.value = sortBooks(list)
         } catch (e: Exception) {
             // 저장된 데이터 손상 시 초기화
             prefs.edit().remove(KEY_BOOKS).apply()
@@ -80,9 +103,9 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
 
-                val updated = current + book
+                val updated = sortBooks(current + book)
                 _books.value = updated
-                saveBooks(updated)
+                saveBooks(current + book)  // 저장은 정렬 전 순서로 유지
             } catch (e: Exception) {
                 _error.value = e.message ?: "파일을 추가할 수 없습니다."
             } finally {
