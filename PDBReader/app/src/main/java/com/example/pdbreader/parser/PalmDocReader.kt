@@ -42,8 +42,8 @@ class PalmDocReader(private val file: File) {
 
         return when (format) {
             PdbFormat.PALM_DOC -> readPalmDoc(parser, header, records)
-            PdbFormat.ISILO, PdbFormat.ISILO3, PdbFormat.ISILO_OLD ->
-                readIsiloAsText(parser, header, records)
+            PdbFormat.ISILO_OLD -> readIsiloOld(parser, header, records)
+            PdbFormat.ISILO, PdbFormat.ISILO3 -> readIsiloAsText(parser, header, records)
             PdbFormat.ZTXT -> readZTxt(parser, header, records)
             else -> readRawText(parser, header, records)
         }
@@ -97,6 +97,73 @@ class PalmDocReader(private val file: File) {
             recordCount = textRecords,
             textLength = textLength,
             isHtml = isHtmlContent(finalText)
+        )
+    }
+
+    /**
+     * iSilo 1.x/2.x (SDoc/SilX) 포맷 읽기
+     * 초기 iSilo는 Palm DOC와 동일한 헤더 구조를 가지므로 Palm DOC 방식으로 시도.
+     * 실패 시 전체 레코드를 EUC-KR로 직접 디코딩.
+     */
+    private fun readIsiloOld(
+        parser: PdbParser,
+        header: PdbHeader,
+        records: List<com.example.pdbreader.model.PdbRecordEntry>
+    ): ReadResult {
+        // Palm DOC 호환 헤더 시도
+        val headerData = parser.getRecordData(
+            records[0],
+            if (records.size > 1) records[1].offset else Int.MAX_VALUE
+        )
+        if (headerData.size >= 16) {
+            val buf = ByteBuffer.wrap(headerData).order(ByteOrder.BIG_ENDIAN)
+            val version = buf.short.toInt() and 0xFFFF
+            // version 1=비압축, 2=압축 (Palm DOC 호환)
+            if (version == 1 || version == 2) {
+                try {
+                    buf.short // reserved
+                    val textLength = buf.int
+                    val textRecords = buf.short.toInt() and 0xFFFF
+                    val compressed = version == 2
+                    val sb = StringBuilder(maxOf(textLength, 1024))
+                    val count = minOf(textRecords, records.size - 1)
+                    for (i in 1..count) {
+                        val nextOffset = if (i + 1 < records.size) records[i + 1].offset else Int.MAX_VALUE
+                        val raw = parser.getRecordData(records[i], nextOffset)
+                        if (raw.isEmpty()) continue
+                        sb.append(decodeText(DocDecoder.decodeRecord(raw, compressed)))
+                    }
+                    val text = cleanText(sb.toString())
+                    if (text.isNotBlank() && text.length > 50) {
+                        return ReadResult(
+                            title = header.name.ifEmpty { file.nameWithoutExtension },
+                            text = text,
+                            format = PdbFormat.ISILO_OLD,
+                            recordCount = textRecords,
+                            textLength = textLength,
+                            isHtml = isHtmlContent(text)
+                        )
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+        // Palm DOC 방식 실패 → 전체 레코드를 EUC-KR/UTF-8로 직접 디코딩
+        val sb = StringBuilder()
+        for (i in 1 until records.size) {
+            val nextOffset = if (i + 1 < records.size) records[i + 1].offset else Int.MAX_VALUE
+            val data = parser.getRecordData(records[i], nextOffset)
+            if (data.isEmpty()) continue
+            val text = decodeText(data)
+            val filtered = text.filter { it.isLetterOrDigit() || it.isWhitespace() || it.code > 0x1000 }
+            if (filtered.isNotBlank()) sb.append(filtered).append('\n')
+        }
+        val result = cleanText(sb.toString())
+        return ReadResult(
+            title = header.name.ifEmpty { file.nameWithoutExtension },
+            text = result.ifBlank { "[iSilo 구버전 형식입니다. 내용을 완전히 표시할 수 없습니다.]\n파일명: ${file.name}" },
+            format = PdbFormat.ISILO_OLD,
+            recordCount = records.size - 1,
+            textLength = result.length
         )
     }
 
