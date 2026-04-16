@@ -42,7 +42,8 @@ class PalmDocReader(private val file: File) {
 
         return when (format) {
             PdbFormat.PALM_DOC -> readPalmDoc(parser, header, records)
-            PdbFormat.ISILO, PdbFormat.ISILO3 -> readIsiloAsText(parser, header, records)
+            PdbFormat.ISILO, PdbFormat.ISILO3, PdbFormat.ISILO_OLD ->
+                readIsiloAsText(parser, header, records)
             PdbFormat.ZTXT -> readZTxt(parser, header, records)
             else -> readRawText(parser, header, records)
         }
@@ -85,7 +86,7 @@ class PalmDocReader(private val file: File) {
             if (rawData.isEmpty()) continue
 
             val decoded = DocDecoder.decodeRecord(rawData, compressed)
-            sb.append(String(decoded, Charsets.UTF_8))
+            sb.append(decodeText(decoded))
         }
 
         val finalText = cleanText(sb.toString())
@@ -217,16 +218,43 @@ class PalmDocReader(private val file: File) {
 
     /**
      * 바이트 배열에서 출력 가능한 텍스트를 추출합니다.
+     * EUC-KR, UTF-8, ISO-8859-1 순으로 인코딩을 시도합니다.
      */
     private fun extractPrintableText(data: ByteArray): String {
-        // 먼저 UTF-8로 시도
-        return try {
+        // EUC-KR 시도 (한국어 PDB 대부분)
+        if (data.any { it.toInt() and 0xFF > 0x7F }) {
+            try {
+                val text = String(data, charset("EUC-KR"))
+                val filtered = text.filter { it != '\uFFFD' && (it.isLetterOrDigit() || it.isWhitespace() || it.code > 0x7F || it in ".,!?\"'()[]{}:;-_/@#$%^&*") }
+                if (filtered.length > data.size / 4) return filtered
+            } catch (_: Exception) {}
+        }
+        // UTF-8 시도
+        try {
             val text = String(data, Charsets.UTF_8)
-            text.filter { it.isLetterOrDigit() || it.isWhitespace() || it in ".,!?\"'()[]{}:;-_/\\@#$%^&*+=<>~`|" }
-        } catch (e: Exception) {
-            // 실패 시 ISO-8859-1로 시도
-            val text = String(data, Charsets.ISO_8859_1)
-            text.filter { it.code in 32..126 || it == '\n' || it == '\r' || it == '\t' }
+            val filtered = text.filter { it != '\uFFFD' && (it.isLetterOrDigit() || it.isWhitespace() || it.code > 0x7F || it in ".,!?\"'()[]{}:;-_/@#$%^&*") }
+            if (filtered.length > data.size / 8) return filtered
+        } catch (_: Exception) {}
+        // ASCII fallback
+        return String(data, Charsets.ISO_8859_1)
+            .filter { it.code in 32..126 || it == '\n' || it == '\r' || it == '\t' }
+    }
+
+    /**
+     * 바이트 배열을 올바른 인코딩으로 디코딩합니다. (EUC-KR / UTF-8 자동 감지)
+     */
+    private fun decodeText(data: ByteArray): String {
+        if (data.any { it.toInt() and 0xFF > 0x7F }) {
+            // EUC-KR 시도
+            try {
+                val text = String(data, charset("EUC-KR"))
+                if (text.none { it == '\uFFFD' }) return text
+            } catch (_: Exception) {}
+        }
+        return try {
+            String(data, Charsets.UTF_8)
+        } catch (_: Exception) {
+            String(data, Charsets.ISO_8859_1)
         }
     }
 

@@ -8,6 +8,7 @@ enum class PdbFormat(val typeName: String, val creatorName: String, val displayN
     PALM_DOC("TEXt", "REAd", "Palm DOC"),
     ISILO("iSLT", "SiLo", "iSilo"),
     ISILO3("ToGo", "SiLo", "iSilo 3"),
+    ISILO_OLD("SDoc", "SilX", "iSilo (구버전)"),
     ZTXT("zTXT", "GPlm", "zTXT"),
     UNKNOWN("????", "????", "Unknown PDB");
 

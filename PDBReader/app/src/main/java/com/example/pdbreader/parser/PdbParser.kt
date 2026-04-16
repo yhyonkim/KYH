@@ -43,7 +43,7 @@ class PdbParser(private val file: File) {
         // name: 32 bytes, null-terminated
         val nameBytes = ByteArray(32)
         buffer.get(nameBytes)
-        val name = String(nameBytes, Charsets.ISO_8859_1).trimEnd('\u0000')
+        val name = decodeNameBytes(nameBytes)
 
         val attributes = buffer.short
         val version = buffer.short
@@ -109,6 +109,29 @@ class PdbParser(private val file: File) {
         val length = end - start
         if (start < 0 || start >= bytes.size || length <= 0) return ByteArray(0)
         return bytes.copyOfRange(start, minOf(start + length, bytes.size))
+    }
+
+    /**
+     * PDB 이름 필드를 올바른 인코딩으로 디코딩합니다.
+     * 한국어 PDB는 EUC-KR을, 그 외는 UTF-8/ISO-8859-1을 시도합니다.
+     */
+    private fun decodeNameBytes(nameBytes: ByteArray): String {
+        val nullEnd = nameBytes.indexOfFirst { it == 0.toByte() }
+        val validBytes = if (nullEnd >= 0) nameBytes.copyOf(nullEnd) else nameBytes
+
+        if (validBytes.isEmpty()) return ""
+
+        // 상위 바이트(0x80 이상)가 있으면 한국어(EUC-KR) 시도
+        if (validBytes.any { it.toInt() and 0xFF > 0x7F }) {
+            try {
+                val decoded = String(validBytes, charset("EUC-KR"))
+                if (decoded.isNotBlank() && decoded.all { it != '\uFFFD' }) return decoded
+            } catch (_: Exception) {}
+            try {
+                return String(validBytes, Charsets.UTF_8)
+            } catch (_: Exception) {}
+        }
+        return String(validBytes, Charsets.ISO_8859_1)
     }
 
     /**
