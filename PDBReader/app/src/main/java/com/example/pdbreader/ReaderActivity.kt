@@ -16,6 +16,7 @@ import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.view.GestureDetector
 import android.view.KeyEvent
+import androidx.core.view.WindowCompat
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -112,6 +113,7 @@ class ReaderActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityReaderBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
